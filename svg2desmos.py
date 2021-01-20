@@ -442,12 +442,3 @@ class path:
         
         return command
         
-
-        
-
-
-
-
-        
-c = path()
-c.parse_path('coke.svg')

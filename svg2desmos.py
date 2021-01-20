@@ -359,6 +359,44 @@ class path:
         command = f"Calc.setExpression({{latex: '\\\left({self.sx},\\\left({y_delta}\\\\right)t+{self.sy}\\\\right)', color: '{'#000000'}'}})"
         return command
         
+        '''def arc(self, sx, sy, rx, ry, angle, large_arc, sweep, ex, ey):
+        self.sx = sx
+        self.sy = sy
+        self.rx = rx
+        self.ry = ry
+        self.angle = angle
+        self.large_arc = large_arc
+        self.sweep = sweep
+        self.ex = ex
+        self.ey = ey
+        if self.sweep == 1:
+            self.sweep = 0 
+        else:
+            self.sweep = 1  
+        x1_prime = (self.sx-self.ex)/2 * cos(self.angle) + (self.sy-self.ey)/2 * sin(self.angle)
+        y1_prime = (self.sy-self.ey)/2 * cos(self.angle) - (self.sx-self.ex)/2 * sin(self.angle)
+        signh = -1 if self.large_arc == self.sweep else 1
+        C = signh * sqrt(negative_zero_clamp((self.rx**2 * self.ry**2 - self.rx**2 * y1_prime**2 - self.ry**2 * x1_prime**2)/ (self.rx**2 * y1_prime**2 + self.ry**2 * x1_prime**2)))
+        cx_prime = C * self.rx * y1_prime / self.ry
+        cy_prime = -C * self.ry * x1_prime / self.rx
+        c_x = cx_prime * cos(self.angle) - cy_prime * sin(self.angle) + (self.sx + self.ex)/2
+        c_y = cx_prime * sin(self.angle) + cy_prime * cos(self.angle) + (self.sy + self.ey)/2
+        s = sign((y1_prime-cy_prime)/self.ry)
+        theta_1 = s * py_ang([(x1_prime-cx_prime)/self.rx, (y1_prime-cy_prime)/self.ry],[1,0])
+        ux = (x1_prime - cx_prime) / self.rx
+        uy = (y1_prime - cy_prime) / self.ry    
+        vx = (-x1_prime-cx_prime) / self.rx
+        vy = (-y1_prime-cy_prime) / self.ry
+        s = sign(ux * vy - uy * vx)
+        delta_theta = s * py_ang([ux,uy],[vx,vy]) % 2 * pi
+        theta_2 = theta_1 - delta_theta
+        theta_max = max(theta_1,theta_2)
+        theta_min = min(theta_1,theta_2)
+        if not self.sweep:
+            theta_delta -= 2*pi
+        command = f"Calc.setExpression({{latex: '\\\left((-{self.ry})\\\sin\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\cos\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({c_x}),({self.ry})\\\cos\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\sin\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({c_y})\\\\right)', color: '{'#000000'}'}})"
+        return command'''
+        
     def arc(self, sx, sy, rx, ry, angle, large_arc, sweep, ex, ey):
         self.sx = sx 
         self.sy = sy

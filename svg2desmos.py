@@ -43,6 +43,10 @@ cpy = 0
 spx = 0
 spy = 0
 f = 1
+default_colour = '#000000'
+all_default = False
+
+
 
 class path:
     def parse_path(self, path):
@@ -59,7 +63,10 @@ class path:
         colour_strings = [[i,path.getAttribute('fill')] for i, path in enumerate(doc.getElementsByTagName('path'))]
         for i in range(len(colour_strings)):
             if colour_strings[i][1] == '':
-                colour_strings[i][1] = '#000000'
+                colour_strings[i][1] = default_colour
+        if all_default:
+            for i in range(len(colour_strings)):
+                colour_strings[i][1] = default_colour
         #print(colour_strings)
         TOKEN_RE = re.compile("[MmZzLlHhVvCcSsQqTtAa]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?")
         def _tokenize_path_replace(pathdef):

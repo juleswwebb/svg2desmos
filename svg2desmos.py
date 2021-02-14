@@ -497,4 +497,4 @@ class path:
 
         
 c = path()
-c.parse_path('desmos\svgs\yes.svg')
+c.parse_path('')

@@ -32,7 +32,7 @@ def angle_two_vecs(u, v):
     u = np.transpose(u)[0]
     v = np.transpose(v)[0]
     h = (u.dot(v))/ ( np.linalg.norm(u) * np.linalg.norm(v))
-    if h > 1:
+    if h > 1:   
         h = 1
     elif h < -1:
         h = -1
@@ -44,8 +44,8 @@ spx = 0
 spy = 0
 f = 1
 default_colour = '#000000'
-all_default = False
-
+only_fill = True
+only_lines = False
 
 
 class path:
@@ -58,30 +58,53 @@ class path:
         self.path = path
         paths_list = []
         letters_list = []
+        not_fill = []
+        fill = []
+        not_stroke = []
+        stroke = []
         doc = minidom.parse(self.path)
         path_strings = [path.getAttribute('d') for path in doc.getElementsByTagName('path')]
         colour_strings = [[i,path.getAttribute('fill')] for i, path in enumerate(doc.getElementsByTagName('path'))]
+        stroke_strings = [[i,path.getAttribute('stroke')] for i, path in enumerate(doc.getElementsByTagName('path'))]
+
+        for i in range(len(stroke_strings)):
+            if stroke_strings[i][1] == '':
+                not_stroke.append(i)
+            else:
+                stroke.append(i)
+
         for i in range(len(colour_strings)):
             if colour_strings[i][1] == '':
-                colour_strings[i][1] = default_colour
-        if all_default:
-            for i in range(len(colour_strings)):
-                colour_strings[i][1] = default_colour
-        #print(colour_strings)
+                not_fill.append(i)
+            else:
+                fill.append(i)
+
+        for i in range(len(colour_strings)):
+            if colour_strings[i][1] == '':
+                if stroke_strings[i][1] != '':
+                    colour_strings[i][1] = stroke_strings[i][1]
+                else:
+                    colour_strings[i][1] = default_colour
+            if stroke_strings[i][1] == '':
+                if colour_strings[i][1] != '':
+                    stroke_strings[i][1] = colour_strings[i][1]
+                else:
+                    stroke_strings[i][1] = default_colour      
+
         TOKEN_RE = re.compile("[MmZzLlHhVvCcSsQqTtAa]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?")
         def _tokenize_path_replace(pathdef):
             return TOKEN_RE.findall(pathdef)
         amount_of_paths = len(path_strings)
         for lista in path_strings:
             paths_list.append(_tokenize_path_replace(lista))
-        command = ''
+        command = [[] for i in range(amount_of_paths)]
         for i in range(len(paths_list)):
             j=0
             loop_count = len(paths_list[i])
             while j < loop_count:
                 if paths_list[i][j] == 'C':
                     letters_list.append('C')
-                    command += self.cubic(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3],-f*float(paths_list[i][j+4]),paths_list[i][j+5],-f*float(paths_list[i][j+6]), colour_strings[i][1]) + '\n'
+                    command[i].append(self.cubic(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3],-f*float(paths_list[i][j+4]),paths_list[i][j+5],-f*float(paths_list[i][j+6]), colour_strings[i][1]))
                     cpx = paths_list[i][j+5]
                     cpy = paths_list[i][j+6]
                     try:
@@ -92,7 +115,7 @@ class path:
                         IndexError
                 elif paths_list[i][j] == 'Q':
                     letters_list.append('Q')
-                    command += self.quadratic(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3],-f*float(paths_list[i][j+4]),colour_strings[i][1]) + '\n'
+                    command[i].append(self.quadratic(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3],-f*float(paths_list[i][j+4]),colour_strings[i][1]))
                     cpx = paths_list[i][j+3]
                     cpy = paths_list[i][j+4]
                     try:
@@ -116,7 +139,7 @@ class path:
                         IndexError
                 elif paths_list[i][j] == 'L':
                     letters_list.append('L')
-                    command += self.line(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),colour_strings[i][1]))
                     cpx = paths_list[i][j+1]
                     cpy = paths_list[i][j+2]
                     try:
@@ -127,7 +150,7 @@ class path:
                         IndexError
                 elif paths_list[i][j] == 'Z' :
                     letters_list.append('Z')
-                    command += self.line(cpx,-f*float(cpy),spx,-f*float(spy),colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),spx,-f*float(spy),colour_strings[i][1]))
                     cpx = spx
                     cpy = spy
                     spx = float(spx)
@@ -142,7 +165,7 @@ class path:
 
                 elif paths_list[i][j] == 'H':
                     letters_list.append('H')
-                    command += self.horizontal(cpx, -f*float(cpy), paths_list[i][j+1],colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),paths_list[i][j+1],-f*float(cpy),colour_strings[i][1]))
                     cpx = paths_list[i][j+1]
                     try:
                         if not str(paths_list[i][j+2]).isalpha():
@@ -152,8 +175,7 @@ class path:
                         IndexError
                 elif paths_list[i][j] == 'V':
                     letters_list.append('V')
-                    command += self.line(cpx,-f*float(cpy),cpx, -f*float(paths_list[i][j+1]), colour_strings[i][1]) + '\n'
-                    #command += self.vertical(cpx, -f*float(cpy),-f*float(paths_list[i][j+1]), 1 ) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),cpx, -f*float(paths_list[i][j+1]), colour_strings[i][1]))
                     cpy = paths_list[i][j+1]
                     try:
                         if not str(paths_list[i][j+2]).isalpha():
@@ -163,9 +185,9 @@ class path:
                         IndexError
                 elif paths_list[i][j] == 'S':
                     if letters_list[-1] == 'C' or letters_list[-1] == 'S' :
-                        command += self.cubic(cpx,-f*float(cpy),paths_list[i][j-4],-f*float(paths_list[i][j-3]),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3],-f*float(paths_list[i][j+4]),colour_strings[i][1]) + '\n'
+                        command[i].append(self.cubic(cpx,-f*float(cpy),paths_list[i][j-4],-f*float(paths_list[i][j-3]),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3],-f*float(paths_list[i][j+4]),colour_strings[i][1]))
                     else:
-                        command += self.cubic(cpx,-f*float(cpy),cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3], -f*float(paths_list[i][j+4]), colour_strings[i][1]) + '\n'
+                        command[i].append(self.cubic(cpx,-f*float(cpy),cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),paths_list[i][j+3], -f*float(paths_list[i][j+4]), colour_strings[i][1]))
                     cpx = paths_list[i][j+3]
                     cpy = paths_list[i][j+4]
                     try:
@@ -177,9 +199,9 @@ class path:
                     letters_list.append('S')   
                 elif paths_list[i][j] == 'T':
                     if letters_list[-1] == 'Q' or letters_list[-1] == 'T':
-                        command += self.quadratic(cpx,-f*float(cpy),paths_list[i][j-4],-f*float(paths_list[i][j-3]),paths_list[i][j+1],-f*float(paths_list[i][j+2]), colour_strings[i][1]) + '\n'
+                        command[i].append(self.quadratic(cpx,-f*float(cpy),paths_list[i][j-4],-f*float(paths_list[i][j-3]),paths_list[i][j+1],-f*float(paths_list[i][j+2]), colour_strings[i][1]))
                     else:
-                        command += self.quadratic(cpx,-f*float(cpy),cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),colour_strings[i][1]) + '\n'
+                        command[i].append(self.quadratic(cpx,-f*float(cpy),cpx,-f*float(cpy),paths_list[i][j+1],-f*float(paths_list[i][j+2]),colour_strings[i][1]))
                     cpx = paths_list[i][j+1]
                     cpy = paths_list[i][j+2]
                     try:
@@ -191,7 +213,7 @@ class path:
                     letters_list.append('T')
                 elif paths_list[i][j] == 'A':
                     letters_list.append('A')
-                    command += self.arc(cpx,-f*float(cpy),float(paths_list[i][j+1]),float(paths_list[i][j+2]),float(paths_list[i][j+3]),float(paths_list[i][j+4]),float(paths_list[i][j+5]),float(paths_list[i][j+6]), -f*float(paths_list[i][j+7]),colour_strings[i][1]) + '\n'
+                    command[i].append(self.arc(cpx,-f*float(cpy),float(paths_list[i][j+1]),float(paths_list[i][j+2]),float(paths_list[i][j+3]),float(paths_list[i][j+4]),float(paths_list[i][j+5]),float(paths_list[i][j+6]), -f*float(paths_list[i][j+7]),colour_strings[i][1]))
                     cpx = paths_list[i][j+6]
                     cpy = paths_list[i][j+7]
                     try:
@@ -204,7 +226,7 @@ class path:
                     letters_list.append('c')
                     cpx = float(cpx)
                     cpy = float(cpy)
-                    command += self.cubic(cpx,-f*float(cpy),cpx + float(paths_list[i][j+1]),-f*(cpy + float(paths_list[i][j+2])),cpx + float(paths_list[i][j+3]),-f*(cpy + float(paths_list[i][j+4])), cpx+ float(paths_list[i][j+5]),-f*(cpy + float(paths_list[i][j+6])), colour_strings[i][1]) + '\n'
+                    command[i].append(self.cubic(cpx,-f*float(cpy),cpx + float(paths_list[i][j+1]),-f*(cpy + float(paths_list[i][j+2])),cpx + float(paths_list[i][j+3]),-f*(cpy + float(paths_list[i][j+4])), cpx+ float(paths_list[i][j+5]),-f*(cpy + float(paths_list[i][j+6])), colour_strings[i][1]))
                     cpx += float(paths_list[i][j+5])
                     cpy += float(paths_list[i][j+6])
                     try:
@@ -218,7 +240,7 @@ class path:
                     letters_list.append('q')
                     cpx = float(cpx)
                     cpy = float(cpy)
-                    command += self.quadratic(cpx,-f*float(cpy),cpx + float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),cpx + float(paths_list[i][j+3]),-f*(cpy+float(paths_list[i][j+4])),colour_strings[i][1]) + '\n'
+                    command[i].append(self.quadratic(cpx,-f*float(cpy),cpx + float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),cpx + float(paths_list[i][j+3]),-f*(cpy+float(paths_list[i][j+4])),colour_strings[i][1]))
                     cpx += float(paths_list[i][j+3])
                     cpy += float(paths_list[i][j+4])
                     try:
@@ -251,7 +273,7 @@ class path:
                     cpx = float(cpx)
                     cpy = float(cpy)
                     letters_list.append('l')
-                    command += self.line(cpx,-f*float(cpy),cpx + float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),cpx + float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),colour_strings[i][1]))
                     cpx += float(paths_list[i][j+1])
                     cpy += float(paths_list[i][j+2])
                     try:
@@ -263,7 +285,7 @@ class path:
                 elif paths_list[i][j] == 'h':
                     cpx = float(cpx)
                     letters_list.append('h')
-                    command += self.horizontal(cpx, -f*float(cpy), cpx + float(paths_list[i][j+1]), colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),cpx+float(paths_list[i][j+1]),-f*float(cpy),colour_strings[i][1]))
                     cpx += float(paths_list[i][j+1])
                     try:
                         if not str(paths_list[i][j+2]).isalpha():
@@ -274,7 +296,7 @@ class path:
                 elif paths_list[i][j] == 'v':
                     cpy = float(cpy)
                     letters_list.append('v')
-                    command += self.vertical(cpx, -f*float(cpy),-(cpy + float(paths_list[i][j+1])), colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy), cpx, -(cpy + float(paths_list[i][j+1])), colour_strings[i][1]))
                     cpy += float(paths_list[i][j+1])
                     try:
                         if not str(paths_list[i][j+2]).isalpha():
@@ -286,7 +308,7 @@ class path:
                     cpx = float(cpx)
                     cpy = float(cpy)
                     letters_list.append('a')
-                    command += self.arc(cpx,-f*cpy,float(paths_list[i][j+1]),float(paths_list[i][j+2]),float(paths_list[i][j+3]),float(paths_list[i][j+4]),float(paths_list[i][j+5]),cpx+float(paths_list[i][j+6]),-f*(cpy+float(paths_list[i][j+7])),colour_strings[i][1]) + '\n'
+                    command[i].append(self.arc(cpx,-f*cpy,float(paths_list[i][j+1]),float(paths_list[i][j+2]),float(paths_list[i][j+3]),float(paths_list[i][j+4]),float(paths_list[i][j+5]),cpx+float(paths_list[i][j+6]),-f*(cpy+float(paths_list[i][j+7])),colour_strings[i][1]))
                     cpx += float(paths_list[i][j+6])
                     cpy += float(paths_list[i][j+7])
                     try:
@@ -303,9 +325,9 @@ class path:
                     if letters_list[-1] == 's' or letters_list[-1] == 'c':
                         ppx = cpx - float(paths_list[i][j-2]) 
                         ppy = cpy - float(paths_list[i][j-1]) 
-                        command += self.cubic(cpx,-f*float(cpy),2*cpx-(float(paths_list[i][j-4])+ppx),-f*2*cpy+(float(paths_list[i][j-3])+ppy),cpx+float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),cpx+float(paths_list[i][j+3]),-f*(cpy+float(paths_list[i][j+4])),colour_strings[i][1]) + '\n'
+                        command[i].append(self.cubic(cpx,-f*float(cpy),2*cpx-(float(paths_list[i][j-4])+ppx),-f*2*cpy+(float(paths_list[i][j-3])+ppy),cpx+float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),cpx+float(paths_list[i][j+3]),-f*(cpy+float(paths_list[i][j+4])),colour_strings[i][1]))
                     else:
-                        command += self.cubic(cpx,-f*float(cpy),cpx,-f*float(cpy),cpx+float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),cpx+float(paths_list[i][j+3]), -f*(cpy+float(paths_list[i][j+4])), colour_strings[i][1]) + '\n'
+                        command[i].append(self.cubic(cpx,-f*float(cpy),cpx,-f*float(cpy),cpx+float(paths_list[i][j+1]),-f*(cpy+float(paths_list[i][j+2])),cpx+float(paths_list[i][j+3]), -f*(cpy+float(paths_list[i][j+4])), colour_strings[i][1]))
                     cpx += float(paths_list[i][j+3])
                     cpy += float(paths_list[i][j+4])
                     try:
@@ -319,7 +341,7 @@ class path:
                     spx = float(spx)
                     spy = float(spy)
                     letters_list.append('z')
-                    command += self.line(cpx,-f*float(cpy),spx,-f*float(spy),colour_strings[i][1]) + '\n'
+                    command[i].append(self.line(cpx,-f*float(cpy),spx,-f*float(spy),colour_strings[i][1]))
                     cpx = spx
                     cpy = spy
                     if j < len(paths_list[i]) - 1:
@@ -340,35 +362,71 @@ class path:
         for i in range(len(letters_list)):
             letters_list[i] = f'{i+1}:{letters_list[i]}'
         
-
-        print(letters_list)                
+        command_string = ''
+        
+        #print(letters_list)    
+        #print(colour_strings)            
         print("Number Of Functions: " + str(len(letters_list)))
-        pyperclip.copy(command)
 
         
+        #for command_path in command:
+        #    command_string += "Calc.setExpression({latex: \'" + command_path[0] + ',' + command_path[1] + '\', color: \'#000000\'})'+  '\n'
+        #print(colour_strings)
+        if not only_lines:
+            for j in range(0,len(command),1):
+                inner_x = ''
+                inner_y = ''
+                for i in range(len(command[j])):
+                    i_x = str(command[j][i][0]).replace("sqrt","sqr").replace("left","lef").replace("right","righ").replace("arctan","aan").replace('t',f"(t-{i})").replace("lef","left").replace("righ","right").replace("aan","arctan").replace("sqr","sqrt")
+                    i_y = str(command[j][i][1]).replace("sqrt","sqr").replace("left","lef").replace("right","righ").replace("arctan","aan").replace('t',f"(t-{i})").replace("lef","left").replace("righ","right").replace("aan","arctan").replace("sqr","sqrt")
+
+                    if i != len(command[j]) - 1:
+                        inner_x += (f"{i}<t<{i+1}:" + i_x + ",")
+                        inner_y += (f"{i}<t<{i+1}:" + i_y + ",")
+                    else:
+                        inner_x += (f"{i}<t<{i+1}:" + i_x + "")
+                        inner_y += (f"{i}<t<{i+1}:" + i_y + "")
+                upper_bound = 9 * ((len(command[j])*2)//9 + 1)
+                if j in not_fill:
+                    fill_true_false = 'false'
+                else:
+                    fill_true_false = 'true'
+                
+                command_string += "Calc.setExpression({latex: \'" + "\\\left(\\\left\\\{" + inner_x + "\\\\right\\\},\\\left\\\{" + inner_y + "\\\\right\\\}\\\\right)" +  '\',parametricDomain : { min : \'0\', max : \'' + str(upper_bound)+ '\'}' +  f',fill : {fill_true_false}, fillOpacity : 1.0 , color: \'' +colour_strings[j][1] + '\'})' + '\n'
+        
+
+        if not only_fill:
+            for j in range(len(command)):
+                for i in range(len(command[j])):
+                    
+                    command_string += "Calc.setExpression({latex: \'" + "(" + command[j][i][0] + "," + command[j][i][1] + ")" +  '\', color: \'' + stroke_strings[j][1] + '\'})' + '\n'
+        pyperclip.copy(command_string)
+        
     def cubic(self, sx, sy, csx, csy, cex, cey, ex, ey, colour):
-        self.sx = sx
-        self.sy = sy
-        self.csx = csx
-        self.csy = csy
-        self.cex = cex
-        self.cey = cey
-        self.ex = ex
-        self.ey = ey
+        self.sx = ex
+        self.sy = ey
+        self.csx = cex
+        self.csy = cey
+        self.cex = csx
+        self.cey = csy
+        self.ex = sx
+        self.ey = sy
         self.colour = colour
-        command = f"Calc.setExpression({{latex: '\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.ex})+t({self.cex})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.cex})+t({self.csx})\\\\right)\\\\right)+t\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.cex})+t({self.csx})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.csx})+t({self.sx})\\\\right)\\\\right),\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.ey})+t({self.cey})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.cey})+t({self.csy})\\\\right)\\\\right)+t\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.cey})+t({self.csy})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.csy})+t({self.sy})\\\\right)\\\\right)\\\\right)', color: '{self.colour}'}})"
-        return command
+        x_command = f"\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.ex})+t({self.cex})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.cex})+t({self.csx})\\\\right)\\\\right)+t\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.cex})+t({self.csx})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.csx})+t({self.sx})\\\\right)\\\\right)"
+        y_command = f"\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.ey})+t({self.cey})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.cey})+t({self.csy})\\\\right)\\\\right)+t\\\left(\\\left(1-t\\\\right)\\\left(\\\left(1-t\\\\right)({self.cey})+t({self.csy})\\\\right)+t\\\left(\\\left(1-t\\\\right)({self.csy})+t({self.sy})\\\\right)\\\\right)"
+        return x_command,y_command
 
     def quadratic(self, sx, sy, cx, cy, ex, ey, colour):
-        self.sx = sx
-        self.sy = sy
+        self.sx = ex
+        self.sy = ey
         self.cx = cx
         self.cy = cy
-        self.ex = ex
-        self.ey = ey
+        self.ex = sx
+        self.ey = sy
         self.colour = colour
-        command = f"Calc.setExpression({{latex: '\\\left(\\\left(1-t\\\\right)^{{2}}({self.sx})+2\\\left(1-t\\\\right)t({self.cx})+\\\left(t\\\\right)^{{2}}({self.ex}),\\\left(1-t\\\\right)^{{2}}({self.sy})+2\\\left(1-t\\\\right)t({self.cy})+\\\left(t\\\\right)^{{2}}({self.ey})\\\\right)', color: '{self.colour}'}})"
-        return command
+        x_command = f"\\\left(1-t\\\\right)^{{2}}({self.sx})+2\\\left(1-t\\\\right)t({self.cx})+\\\left(t\\\\right)^{{2}}({self.ex})"
+        y_command = f"\\\left(1-t\\\\right)^{{2}}({self.sy})+2\\\left(1-t\\\\right)t({self.cy})+\\\left(t\\\\right)^{{2}}({self.ey})"
+        return x_command,y_command
 
     def move(self, x, y, rel):
         if rel == 0:
@@ -379,80 +437,26 @@ class path:
             cpy += y
 
     def line(self, sx, sy, ex, ey, colour):
-        self.sx = sx
-        self.sy = sy
-        self.ex = ex
-        self.ey = ey
+        self.sx = ex
+        self.sy = ey
+        self.ex = sx
+        self.ey = sy
         self.colour = colour
-        command = f"Calc.setExpression({{latex: '\\\left(\\\sqrt{{\\\left({self.ey}-{self.sy}\\\\right)^{{2}}+\\\left({self.ex}-{self.sx}\\\\right)^{{2}}}}\\\cos\\\left(\\\\arctan\\\left({self.ey}-{self.sy},{self.ex}-{self.sx}\\\\right)\\\\right)t+{self.sx},\\\sqrt{{\\\left({self.ey}-{self.sy}\\\\right)^{{2}}+\\\left({self.ex}-{self.sx}\\\\right)^{{2}}}}\\\sin\\\left(\\\\arctan\\\left({self.ey}-{self.sy},{self.ex}-{self.sx}\\\\right)\\\\right)t+{self.sy}\\\\right)', color: '{self.colour}'}})"
-        return command
-
-    def horizontal(self, sx, sy, ex, colour):
-        self.sx = sx
-        self.sy = sy
-        self.ex = ex
-        self.colour = colour
-        x_delta = float(self.ex) - float(self.sx)
-        command = f"Calc.setExpression({{latex: '\\\left(\\\left({x_delta}\\\\right)t+{self.sx},+{self.sy}\\\\right)', color: '{self.colour}'}})"
-        return command
-
-    def vertical(self, sx, sy, ey, colour):
-        self.sx = sx
-        self.sy = sy
-        self.ey = ey
-        self.colour = colour
-        y_delta = float(self.ey) - float(self.sy)
-        command = f"Calc.setExpression({{latex: '\\\left({self.sx},\\\left({y_delta}\\\\right)t+{self.sy}\\\\right)', color: '{self.colour}'}})"
-        return command
-        
-        '''def arc(self, sx, sy, rx, ry, angle, large_arc, sweep, ex, ey):
-        self.sx = sx
-        self.sy = sy
-        self.rx = rx
-        self.ry = ry
-        self.angle = angle
-        self.large_arc = large_arc
-        self.sweep = sweep
-        self.ex = ex
-        self.ey = ey
-        if self.sweep == 1:
-            self.sweep = 0 
-        else:
-            self.sweep = 1  
-        x1_prime = (self.sx-self.ex)/2 * cos(self.angle) + (self.sy-self.ey)/2 * sin(self.angle)
-        y1_prime = (self.sy-self.ey)/2 * cos(self.angle) - (self.sx-self.ex)/2 * sin(self.angle)
-        signh = -1 if self.large_arc == self.sweep else 1
-        C = signh * sqrt(negative_zero_clamp((self.rx**2 * self.ry**2 - self.rx**2 * y1_prime**2 - self.ry**2 * x1_prime**2)/ (self.rx**2 * y1_prime**2 + self.ry**2 * x1_prime**2)))
-        cx_prime = C * self.rx * y1_prime / self.ry
-        cy_prime = -C * self.ry * x1_prime / self.rx
-        c_x = cx_prime * cos(self.angle) - cy_prime * sin(self.angle) + (self.sx + self.ex)/2
-        c_y = cx_prime * sin(self.angle) + cy_prime * cos(self.angle) + (self.sy + self.ey)/2
-        s = sign((y1_prime-cy_prime)/self.ry)
-        theta_1 = s * py_ang([(x1_prime-cx_prime)/self.rx, (y1_prime-cy_prime)/self.ry],[1,0])
-        ux = (x1_prime - cx_prime) / self.rx
-        uy = (y1_prime - cy_prime) / self.ry    
-        vx = (-x1_prime-cx_prime) / self.rx
-        vy = (-y1_prime-cy_prime) / self.ry
-        s = sign(ux * vy - uy * vx)
-        delta_theta = s * py_ang([ux,uy],[vx,vy]) % 2 * pi
-        theta_2 = theta_1 - delta_theta
-        theta_max = max(theta_1,theta_2)
-        theta_min = min(theta_1,theta_2)
-        if not self.sweep:
-            theta_delta -= 2*pi
-        command = f"Calc.setExpression({{latex: '\\\left((-{self.ry})\\\sin\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\cos\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({c_x}),({self.ry})\\\cos\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\sin\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({c_y})\\\\right)', color: '{'#000000'}'}})"
-        return command'''
+        #\left(,\right)
+        x_command = f"({self.ex})\\\left(1-t\\\\right)+({self.sx})t"
+        y_command = f"({self.ey})\\\left(1-t\\\\right)+({self.sy})t"
+        return x_command,y_command
         
     def arc(self, sx, sy, rx, ry, angle, large_arc, sweep, ex, ey, colour):
-        self.sx = sx 
-        self.sy = sy
+        self.sx = ex 
+        self.sy = ey
         self.rx = rx 
         self.ry = ry
         self.angle = angle 
         self.large_arc = large_arc
         self.sweep = not sweep 
-        self.ex = ex 
-        self.ey = ey
+        self.ex = sx 
+        self.ey = sy
         self.colour = colour
         xy_subtracty_thing = np.array([[(sx-ex)/2], [(sy - ey) / 2]]) 
         xy1_prime_rotation_mtx = np.array([[cos(angle), sin(angle)], [-sin(angle), cos(angle)]]) 
@@ -485,10 +489,10 @@ class path:
         max_min = theta_max - theta_min
         if max_min == 0:
             max_min = pi
-        #command = f"Calc.setExpression({{latex: '\\\left((-{self.ry})\\\sin\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\cos\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({c_x}),({self.ry})\\\cos\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\sin\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({theta_max})-({theta_min})\\\\right)t+({theta_min})\\\\right)+({c_y})\\\\right)', color: '{'#000000'}'}})"
-        command = f"Calc.setExpression({{latex: '\\\left((-{self.ry})\\\sin\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\cos\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({c_x}),({self.ry})\\\cos\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\sin\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({c_y})\\\\right)', color: '{'#000000'}'}})"
-        
-        return command
+       
+        command_x = f"(-{self.ry})\\\sin\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\cos\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({c_x})"
+        command_y = f"({self.ry})\\\cos\\\left(({self.angle})\\\\right)\\\sin\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({self.rx})\\\sin\\\left(({self.angle})\\\\right)\\\cos\\\left(\\\left(({max_min})\\\\right)t+({theta_min})\\\\right)+({c_y})"
+        return command_x,command_y
         
 
         

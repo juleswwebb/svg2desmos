@@ -44,7 +44,7 @@ spx = 0
 spy = 0
 f = 1
 default_colour = '#000000'
-only_fill = True
+only_fill = True  
 only_lines = False
 
 
@@ -386,7 +386,7 @@ class path:
                     else:
                         inner_x += (f"{i}<t<{i+1}:" + i_x + "")
                         inner_y += (f"{i}<t<{i+1}:" + i_y + "")
-                upper_bound = 9 * ((len(command[j])*2)//9 + 1)
+                upper_bound = 18 * ((len(command[j])*2)//18 + 1)
                 if j in not_fill:
                     fill_true_false = 'false'
                 else:
@@ -501,4 +501,4 @@ class path:
 
         
 c = path()
-c.parse_path('')
+c.parse_path('desmos\svgs\cards.svg')
